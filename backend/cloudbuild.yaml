@@ -1,0 +1,24 @@
+substitutions:
+  _REGION: asia-east1
+  _SERVICE: treasure-raiders-api
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '-t', '$_REGION-docker.pkg.dev/$PROJECT_ID/treasure-raiders/api:$COMMIT_SHA', '.']
+  - name: gcr.io/cloud-builders/docker
+    args: ['push', '$_REGION-docker.pkg.dev/$PROJECT_ID/treasure-raiders/api:$COMMIT_SHA']
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - $_SERVICE
+      - --image=$_REGION-docker.pkg.dev/$PROJECT_ID/treasure-raiders/api:$COMMIT_SHA
+      - --region=$_REGION
+      - --platform=managed
+      - --allow-unauthenticated
+      - --timeout=300
+      - --set-env-vars=FIRESTORE_COLLECTION=treasure_raiders_players
+
+images:
+  - $_REGION-docker.pkg.dev/$PROJECT_ID/treasure-raiders/api:$COMMIT_SHA

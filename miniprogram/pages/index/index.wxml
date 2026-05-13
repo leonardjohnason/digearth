@@ -1,0 +1,87 @@
+<view class="page">
+  <view class="hero">
+    <view>
+      <text class="eyebrow">SOCIAL TREASURE STRATEGY</text>
+      <view class="title">宝藏奇兵</view>
+      <view class="subtitle">藏宝布防，组队挖好友的宝藏。</view>
+    </view>
+    <button class="ghost" bindtap="reload">刷新</button>
+  </view>
+
+  <view class="config card">
+    <view class="label">Backend URL</view>
+    <input value="{{apiBase}}" bindinput="onApiBaseInput" placeholder="Cloud Run URL" />
+    <button size="mini" bindtap="saveApiBase">保存服务地址</button>
+  </view>
+
+  <view class="stats">
+    <view class="stat" wx:for="{{stats}}" wx:key="name"><text>{{item.name}}</text><strong>{{item.value}}</strong></view>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{tab==='defend'?'active':''}}" data-tab="defend" bindtap="setTab">藏宝布防</view>
+    <view class="tab {{tab==='raid'?'active':''}}" data-tab="raid" bindtap="setTab">挖宝进攻</view>
+    <view class="tab {{tab==='report'?'active':''}}" data-tab="report" bindtap="setTab">战报</view>
+  </view>
+
+  <view wx:if="{{tab==='defend'}}">
+    <view class="card">
+      <view class="section-title">1. 选择宝藏</view>
+      <picker range="{{treasures}}" range-key="name" value="{{treasureIndex}}" bindchange="pickTreasure">
+        <view class="picker">{{treasures[treasureIndex].name}}｜价值 {{treasures[treasureIndex].value}}</view>
+      </picker>
+      <view class="section-title mt">2. 选择藏宝地</view>
+      <picker range="{{scenes}}" range-key="name" value="{{sceneIndex}}" bindchange="pickScene">
+        <view class="picker">{{scenes[sceneIndex].name}}｜{{scenes[sceneIndex].note}}</view>
+      </picker>
+    </view>
+
+    <view class="section-title">3. 购买机关/守卫</view>
+    <view class="grid">
+      <view class="shop card" wx:for="{{defenses}}" wx:key="id">
+        <view class="shop-title">{{item.name}}</view>
+        <view class="muted">{{item.desc}}</view>
+        <view>成本：{{item.cost}} 金币</view>
+        <button size="mini" data-id="{{item.id}}" bindtap="buyDefense">购买布置</button>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">当前布防</view>
+      <view wx:if="{{state.defense.length === 0}}" class="muted">尚未布防</view>
+      <view wx:for="{{defenseNames}}" wx:key="index" class="row">
+        <text>{{item}}</text><button size="mini" class="danger" data-index="{{index}}" bindtap="removeDefense">移除</button>
+      </view>
+      <button class="primary" bindtap="publishTreasure">发布宝藏</button>
+    </view>
+  </view>
+
+  <view wx:if="{{tab==='raid'}}">
+    <view class="section-title">选择目标</view>
+    <view class="target card {{selectedTarget===index?'selected':''}}" wx:for="{{targets}}" wx:key="id" data-index="{{index}}" bindtap="selectTarget">
+      <view class="shop-title">{{item.name}}</view>
+      <view>场景：{{item.sceneName}}｜价值 {{item.value}}</view>
+      <view class="muted">情报：{{item.defenseCount}} 个防守点</view>
+    </view>
+
+    <view class="section-title">组织小分队（最多 5 人）</view>
+    <view class="grid">
+      <view class="shop card" wx:for="{{units}}" wx:key="id">
+        <view class="shop-title">{{item.name}}</view>
+        <view class="muted">{{item.skill}}</view>
+        <view>雇佣：{{item.cost}} 金币</view>
+        <button size="mini" data-id="{{item.id}}" bindtap="addUnit">加入</button>
+      </view>
+    </view>
+    <view class="card">
+      <view>已选：{{squadText}}</view>
+      <button class="ghost" bindtap="clearSquad">清空小队</button>
+      <button class="primary" bindtap="attack">出发挖宝</button>
+    </view>
+  </view>
+
+  <view wx:if="{{tab==='report'}}" class="card report">
+    <view class="section-title">最新战报</view>
+    <text decode="true">{{reportText}}</text>
+  </view>
+</view>

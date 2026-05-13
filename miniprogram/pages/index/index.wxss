@@ -1,0 +1,27 @@
+.page { padding: 28rpx; padding-bottom: 80rpx; }
+.hero { display: flex; justify-content: space-between; gap: 20rpx; align-items: flex-start; margin-bottom: 22rpx; }
+.eyebrow { color: #8ea5d9; font-size: 20rpx; letter-spacing: 2rpx; }
+.title { font-size: 56rpx; font-weight: 900; margin-top: 6rpx; }
+.subtitle, .muted { color: #9aa8c7; font-size: 24rpx; line-height: 1.5; }
+.card { background: #172033; border: 1rpx solid #293957; box-shadow: 0 10rpx 36rpx rgba(0,0,0,.25); border-radius: 26rpx; padding: 24rpx; margin: 18rpx 0; }
+.config input { background: #0f1728; border-radius: 14rpx; padding: 14rpx; margin: 10rpx 0; color: white; }
+.label { color: #9aa8c7; font-size: 22rpx; }
+.stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12rpx; }
+.stat { background: #1f2a44; border-radius: 20rpx; padding: 14rpx 8rpx; text-align: center; }
+.stat text { color: #93a4c7; display: block; font-size: 20rpx; }
+.stat strong { font-size: 28rpx; color: #fff; }
+.tabs { display: flex; background: #0f1728; border-radius: 22rpx; padding: 8rpx; margin: 22rpx 0; }
+.tab { flex: 1; padding: 18rpx 8rpx; text-align: center; color: #aab7d2; border-radius: 18rpx; font-size: 26rpx; }
+.tab.active { background: #315eea; color: white; font-weight: 700; }
+.section-title { font-size: 30rpx; font-weight: 800; margin: 16rpx 0; }
+.mt { margin-top: 28rpx; }
+.picker { background: #0f1728; padding: 20rpx; border-radius: 18rpx; color: #f4f7ff; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; }
+.shop { margin: 0; }
+.shop-title { font-size: 28rpx; font-weight: 800; margin-bottom: 8rpx; }
+.row { display: flex; justify-content: space-between; align-items: center; padding: 12rpx 0; border-bottom: 1rpx solid #263552; }
+.primary { background: #f7b731; color: #1c1300; font-weight: 900; margin-top: 18rpx; }
+.ghost { background: #25324e; color: #e6edff; }
+.danger { background: #472536; color: #ffd6e2; }
+.target.selected { border-color: #f7b731; box-shadow: 0 0 0 2rpx #f7b731 inset; }
+.report { white-space: pre-wrap; line-height: 1.55; }

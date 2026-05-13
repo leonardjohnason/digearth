@@ -1,0 +1,11 @@
+{
+  "pages": ["pages/index/index"],
+  "window": {
+    "navigationBarTitleText": "宝藏奇兵",
+    "navigationBarBackgroundColor": "#172033",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#101827"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
