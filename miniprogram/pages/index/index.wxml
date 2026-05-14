@@ -1,17 +1,37 @@
-<view class="page">
-  <view class="hero">
-    <view>
-      <text class="eyebrow">SOCIAL TREASURE STRATEGY</text>
+<view class="page cinematic-{{cinematic}}">
+  <view class="hero-card">
+    <image class="hero-bg" mode="aspectFill" src="/assets/scene-valley.svg" />
+    <view class="hero-overlay"></view>
+    <view class="hero-content">
+      <text class="eyebrow">LIVE MULTIPLAYER TREASURE WORLD</text>
       <view class="title">宝藏奇兵</view>
-      <view class="subtitle">藏宝布防，组队挖好友的宝藏。</view>
+      <view class="subtitle">微信登录 · 真人藏宝攻防 · 电影感战报</view>
+      <view class="hero-actions">
+        <button class="ghost small" bindtap="reload">刷新世界</button>
+        <button class="primary small" bindtap="shareGame">邀请好友</button>
+      </view>
     </view>
-    <button class="ghost" bindtap="reload">刷新</button>
   </view>
 
   <view class="config card">
-    <view class="label">Backend URL</view>
-    <input value="{{apiBase}}" bindinput="onApiBaseInput" placeholder="Cloud Run URL" />
-    <button size="mini" bindtap="saveApiBase">保存服务地址</button>
+    <view class="label">Cloud Run Backend URL</view>
+    <input value="{{apiBase}}" bindinput="onApiBaseInput" placeholder="https://your-cloud-run-url" />
+    <button size="mini" bindtap="saveApiBase">保存服务地址并重新登录</button>
+  </view>
+
+  <view class="identity card">
+    <view class="avatar-wrap">
+      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <image wx:if="{{state.profile && state.profile.avatarUrl}}" src="{{state.profile.avatarUrl}}" />
+        <text wx:else>👤</text>
+      </button>
+    </view>
+    <view class="identity-main">
+      <view class="label">微信身份</view>
+      <input class="nick" type="nickname" bindinput="onNicknameInput" placeholder="输入微信昵称" value="{{state.profile.nickName || '微信探险家'}}" />
+      <view class="muted">{{authed ? '已通过 Weixin code2session / dev fallback 登录' : '等待登录'}}</view>
+    </view>
+    <button class="ghost small" bindtap="saveProfile">同步</button>
   </view>
 
   <view class="stats">
@@ -19,16 +39,39 @@
   </view>
 
   <view class="tabs">
-    <view class="tab {{tab==='defend'?'active':''}}" data-tab="defend" bindtap="setTab">藏宝布防</view>
-    <view class="tab {{tab==='raid'?'active':''}}" data-tab="raid" bindtap="setTab">挖宝进攻</view>
+    <view class="tab {{tab==='world'?'active':''}}" data-tab="world" bindtap="setTab">世界</view>
+    <view class="tab {{tab==='defend'?'active':''}}" data-tab="defend" bindtap="setTab">藏宝</view>
+    <view class="tab {{tab==='raid'?'active':''}}" data-tab="raid" bindtap="setTab">进攻</view>
     <view class="tab {{tab==='report'?'active':''}}" data-tab="report" bindtap="setTab">战报</view>
   </view>
 
+  <view wx:if="{{tab==='world'}}">
+    <view class="section-title">在线宝藏世界</view>
+    <view class="world-map card">
+      <view class="pulse p1"></view><view class="pulse p2"></view><view class="pulse p3"></view>
+      <view class="map-title">实时挑战池</view>
+      <view class="muted">已发现 {{targets.length}} 个可挑战藏宝点。真人玩家发布的宝藏会优先显示。</view>
+    </view>
+    <view class="section-title">排行榜</view>
+    <view class="rank card" wx:for="{{leaderboard}}" wx:key="playerId">
+      <view class="rank-no">{{index+1}}</view>
+      <image wx:if="{{item.avatarUrl}}" class="mini-avatar" src="{{item.avatarUrl}}" />
+      <view class="mini-avatar" wx:else>🏴‍☠️</view>
+      <view class="rank-main"><view>{{item.nickName}}</view><text>Lv.{{item.level}} · 声望 {{item.fame}}</text></view>
+      <strong>{{item.score}}</strong>
+    </view>
+  </view>
+
   <view wx:if="{{tab==='defend'}}">
+    <view class="card media-card">
+      <image class="scene-art" mode="aspectFill" src="{{scenes[sceneIndex].image || '/assets/scene-valley.svg'}}" />
+      <view class="scene-caption">{{scenes[sceneIndex].name}}｜{{scenes[sceneIndex].note}}</view>
+    </view>
+
     <view class="card">
       <view class="section-title">1. 选择宝藏</view>
       <picker range="{{treasures}}" range-key="name" value="{{treasureIndex}}" bindchange="pickTreasure">
-        <view class="picker">{{treasures[treasureIndex].name}}｜价值 {{treasures[treasureIndex].value}}</view>
+        <view class="picker">{{treasures[treasureIndex].name}}｜{{treasures[treasureIndex].rarity}}｜价值 {{treasures[treasureIndex].value}}</view>
       </picker>
       <view class="section-title mt">2. 选择藏宝地</view>
       <picker range="{{scenes}}" range-key="name" value="{{sceneIndex}}" bindchange="pickScene">
@@ -39,6 +82,7 @@
     <view class="section-title">3. 购买机关/守卫</view>
     <view class="grid">
       <view class="shop card" wx:for="{{defenses}}" wx:key="id">
+        <view class="icon">{{item.icon}}</view>
         <view class="shop-title">{{item.name}}</view>
         <view class="muted">{{item.desc}}</view>
         <view>成本：{{item.cost}} 金币</view>
@@ -52,21 +96,27 @@
       <view wx:for="{{defenseNames}}" wx:key="index" class="row">
         <text>{{item}}</text><button size="mini" class="danger" data-index="{{index}}" bindtap="removeDefense">移除</button>
       </view>
-      <button class="primary" bindtap="publishTreasure">发布宝藏</button>
+      <button class="primary" bindtap="publishTreasure">发布到在线世界</button>
     </view>
   </view>
 
   <view wx:if="{{tab==='raid'}}">
-    <view class="section-title">选择目标</view>
+    <view class="section-title">选择真人/系统目标</view>
     <view class="target card {{selectedTarget===index?'selected':''}}" wx:for="{{targets}}" wx:key="id" data-index="{{index}}" bindtap="selectTarget">
-      <view class="shop-title">{{item.name}}</view>
-      <view>场景：{{item.sceneName}}｜价值 {{item.value}}</view>
-      <view class="muted">情报：{{item.defenseCount}} 个防守点</view>
+      <view class="target-top">
+        <view>
+          <view class="shop-title">{{item.name}}</view>
+          <view class="muted">藏宝人：{{item.ownerName}} {{item.isNpc ? '· 系统目标' : '· 在线玩家'}}</view>
+        </view>
+        <view class="badge">{{item.sceneName}}</view>
+      </view>
+      <view>价值：{{item.value}}｜防守点：{{item.defenseCount}}｜被挑战：{{item.raidedCount}}</view>
     </view>
 
     <view class="section-title">组织小分队（最多 5 人）</view>
     <view class="grid">
       <view class="shop card" wx:for="{{units}}" wx:key="id">
+        <view class="icon">{{item.avatar}}</view>
         <view class="shop-title">{{item.name}}</view>
         <view class="muted">{{item.skill}}</view>
         <view>雇佣：{{item.cost}} 金币</view>
@@ -76,11 +126,14 @@
     <view class="card">
       <view>已选：{{squadText}}</view>
       <button class="ghost" bindtap="clearSquad">清空小队</button>
-      <button class="primary" bindtap="attack">出发挖宝</button>
+      <button class="primary" bindtap="attack">电影战斗演算</button>
     </view>
   </view>
 
   <view wx:if="{{tab==='report'}}" class="card report">
+    <view class="battle-stage">
+      <view class="raider">🧭</view><view class="slash">⚡</view><view class="guardian">🐲</view>
+    </view>
     <view class="section-title">最新战报</view>
     <text decode="true">{{reportText}}</text>
   </view>

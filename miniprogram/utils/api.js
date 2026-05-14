@@ -5,6 +5,10 @@ function base() {
   return getApp().globalData.apiBase.replace(/\/$/, '')
 }
 
+function token() {
+  return wx.getStorageSync('authToken') || ''
+}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -16,7 +20,10 @@ function wxRequest(url, method, data, timeout) {
       method,
       data,
       timeout,
-      header: { 'content-type': 'application/json' },
+      header: {
+        'content-type': 'application/json',
+        ...(token() ? { authorization: `Bearer ${token()}` } : {})
+      },
       success: res => {
         if (res.statusCode >= 200 && res.statusCode < 300) resolve(res.data)
         else reject(new Error((res.data && res.data.error) || `HTTP ${res.statusCode}`))
@@ -44,4 +51,8 @@ async function request(path, method = 'GET', data = {}, options = {}) {
   throw lastError || new Error('Request failed')
 }
 
-module.exports = { request, DEFAULT_TIMEOUT_MS, DEFAULT_RETRIES }
+function saveToken(value) {
+  wx.setStorageSync('authToken', value)
+}
+
+module.exports = { request, saveToken, DEFAULT_TIMEOUT_MS, DEFAULT_RETRIES }
