@@ -68,3 +68,5 @@ After deployment, copy the Cloud Run URL into `miniprogram/app.js` or save it fr
 - Default backend store is Firestore on Google Cloud.
 - Local testing can use in-memory state with `USE_MEMORY_STORE=1`.
 - Current player identity defaults to `demo`; later versions should bind to Weixin login/openid.
+
+<!-- Codex write permission test: 2026-05-30 -->
