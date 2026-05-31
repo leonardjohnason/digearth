@@ -1,24 +1,26 @@
 substitutions:
   _REGION: asia-east1
   _SERVICE: treasure-raiders-api
+  _SESSION_SECRET: dev-secret-change-me
+  _IMAGE_TAG: latest
 
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ['build', '-t', '$_REGION-docker.pkg.dev/$PROJECT_ID/treasure-raiders/api:$COMMIT_SHA', '.']
+    args: ['build', '-t', '$_REGION-docker.pkg.dev/$PROJECT_ID/treasure-raiders/api:$_IMAGE_TAG', '.']
   - name: gcr.io/cloud-builders/docker
-    args: ['push', '$_REGION-docker.pkg.dev/$PROJECT_ID/treasure-raiders/api:$COMMIT_SHA']
+    args: ['push', '$_REGION-docker.pkg.dev/$PROJECT_ID/treasure-raiders/api:$_IMAGE_TAG']
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
       - run
       - deploy
       - $_SERVICE
-      - --image=$_REGION-docker.pkg.dev/$PROJECT_ID/treasure-raiders/api:$COMMIT_SHA
+      - --image=$_REGION-docker.pkg.dev/$PROJECT_ID/treasure-raiders/api:$_IMAGE_TAG
       - --region=$_REGION
       - --platform=managed
       - --allow-unauthenticated
-      - --timeout=300
-      - --set-env-vars=FIRESTORE_COLLECTION=treasure_raiders_players
+      - --timeout=1800
+      - --set-env-vars=SESSION_SECRET=$_SESSION_SECRET,FIRESTORE_PLAYERS_COLLECTION=treasure_raiders_players,FIRESTORE_TREASURES_COLLECTION=treasure_raiders_treasures,FIRESTORE_ATTACKS_COLLECTION=treasure_raiders_attacks
 
 images:
-  - $_REGION-docker.pkg.dev/$PROJECT_ID/treasure-raiders/api:$COMMIT_SHA
+  - $_REGION-docker.pkg.dev/$PROJECT_ID/treasure-raiders/api:$_IMAGE_TAG

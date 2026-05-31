@@ -88,9 +88,13 @@ export async function listTreasures({ excludeOwnerId, limit = 30 } = {}) {
       .slice(0, limit)
       .map(clone)
   }
-  let query = firestore.collection(TREASURES).where('status', '==', 'open').orderBy('createdAt', 'desc').limit(limit)
+  const query = firestore.collection(TREASURES).where('status', '==', 'open').limit(Math.max(limit * 2, limit))
   const snap = await query.get()
-  return snap.docs.map(d => d.data()).filter(t => t.ownerId !== excludeOwnerId)
+  return snap.docs
+    .map(d => d.data())
+    .filter(t => t.ownerId !== excludeOwnerId)
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .slice(0, limit)
 }
 
 export async function recordAttack(entry) {

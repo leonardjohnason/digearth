@@ -18,7 +18,13 @@ Page({
     reportText: '暂无战报。',
     cinematic: 'idle',
     defenseNames: [],
-    stats: []
+    stats: [],
+    squadText: '尚未选择',
+    selectedTargetName: '尚未锁定',
+    selectedTargetMeta: '进入「进攻」选择一个藏宝点',
+    nextHint: '先购买至少一个机关/守卫，然后发布宝藏；也可以直接进攻系统目标赚金币。',
+    canPublish: false,
+    canAttack: false
   },
 
   onLoad() {
@@ -66,7 +72,16 @@ Page({
   hydrate(data) {
     const sceneName = id => (data.scenes.find(s => s.id === id) || {}).name || id
     const targets = (data.targets || []).map((t, idx) => ({ ...t, sceneName: t.sceneName || sceneName(t.scene), uiIndex: idx }))
+    const selectedIndex = Math.min(this.data.selectedTarget, Math.max(targets.length - 1, 0))
+    const selected = targets[selectedIndex]
     const squadText = this.data.squad.length ? this.data.squad.map(id => (data.units.find(u => u.id === id) || {}).name).join('、') : '尚未选择'
+    const canPublish = Boolean((data.state.defense || []).length && data.treasures.length && data.scenes.length)
+    const canAttack = Boolean(selected && this.data.squad.length)
+    const nextHint = canAttack
+      ? `已锁定 ${selected.name}，小分队就绪，可以开战。`
+      : canPublish
+        ? '布防已完成，可以发布到在线世界；或去进攻页选择目标练兵。'
+        : '建议先买一个基础守卫/机关，再发布自己的宝藏。'
     this.setData({
       me: data.me || this.data.me,
       authed: Boolean(data.me || wx.getStorageSync('authToken')),
@@ -76,6 +91,7 @@ Page({
       defenses: data.defenses,
       units: data.units,
       targets,
+      selectedTarget: selectedIndex,
       leaderboard: data.leaderboard || [],
       defenseNames: (data.state.defense || []).map(id => {
         const d = data.defenses.find(x => x.id === id) || {}
@@ -89,6 +105,11 @@ Page({
         { name: '声望', value: data.state.fame }
       ],
       squadText,
+      selectedTargetName: selected ? selected.name : '尚未锁定',
+      selectedTargetMeta: selected ? `${selected.ownerName}｜${selected.sceneName}｜价值 ${selected.value}` : '暂无可挑战目标',
+      nextHint,
+      canPublish,
+      canAttack,
       reportText: data.state.log && data.state.log.length ? data.state.log.slice(-8).join('\n') : this.data.reportText
     })
   },
@@ -96,7 +117,18 @@ Page({
   setTab(e) { this.setData({ tab: e.currentTarget.dataset.tab }) },
   pickTreasure(e) { this.setData({ treasureIndex: Number(e.detail.value) }) },
   pickScene(e) { this.setData({ sceneIndex: Number(e.detail.value), cinematic: 'scene-shift' }) },
-  selectTarget(e) { this.setData({ selectedTarget: Number(e.currentTarget.dataset.index), cinematic: 'target-lock' }) },
+  selectTarget(e) {
+    const selectedTarget = Number(e.currentTarget.dataset.index)
+    const target = this.data.targets[selectedTarget]
+    this.setData({
+      selectedTarget,
+      selectedTargetName: target ? target.name : '尚未锁定',
+      selectedTargetMeta: target ? `${target.ownerName}｜${target.sceneName}｜价值 ${target.value}` : '暂无可挑战目标',
+      canAttack: Boolean(target && this.data.squad.length),
+      nextHint: target ? `已锁定 ${target.name}，请选择小分队。` : this.data.nextHint,
+      cinematic: 'target-lock'
+    })
+  },
   onApiBaseInput(e) { this.setData({ apiBase: e.detail.value }) },
 
   saveApiBase() {
@@ -137,6 +169,9 @@ Page({
     this.hydrate(data)
   },
   async publishTreasure() {
+    if (!this.data.state.defense || !this.data.state.defense.length) {
+      return wx.showToast({ title: '至少布置一个防守点', icon: 'none' })
+    }
     const treasure = this.data.treasures[this.data.treasureIndex]
     const scene = this.data.scenes[this.data.sceneIndex]
     const data = await this.call('/api/publish', 'POST', { treasureId: treasure.id, sceneId: scene.id })
@@ -148,11 +183,14 @@ Page({
     if (this.data.squad.length >= 5) return wx.showToast({ title: '最多 5 人', icon: 'none' })
     const squad = [...this.data.squad, e.currentTarget.dataset.id]
     const squadText = squad.map(id => (this.data.units.find(u => u.id === id) || {}).name).join('、')
-    this.setData({ squad, squadText, cinematic: 'squad' })
+    const target = this.data.targets[this.data.selectedTarget]
+    this.setData({ squad, squadText, canAttack: Boolean(target), nextHint: target ? `小分队：${squadText}。可以开战。` : '请先选择一个目标。', cinematic: 'squad' })
   },
-  clearSquad() { this.setData({ squad: [], squadText: '尚未选择' }) },
+  clearSquad() { this.setData({ squad: [], squadText: '尚未选择', canAttack: false, nextHint: '小分队已清空，请重新选择队员。' }) },
   async attack() {
     const target = this.data.targets[this.data.selectedTarget]
+    if (!target) return wx.showToast({ title: '请先选择目标', icon: 'none' })
+    if (!this.data.squad.length) return wx.showToast({ title: '请先选择小分队', icon: 'none' })
     const data = await this.call('/api/attack', 'POST', { targetId: target && target.id, targetIndex: this.data.selectedTarget, squad: this.data.squad })
     this.setData({ squad: [], squadText: '尚未选择', tab: 'report', reportText: data.report.join('\n'), battleLines: data.report, cinematic: 'battle' })
     this.hydrate(data.game)

@@ -45,6 +45,23 @@
     <view class="tab {{tab==='report'?'active':''}}" data-tab="report" bindtap="setTab">战报</view>
   </view>
 
+  <view class="mission card">
+    <view class="mission-top">
+      <view>
+        <view class="label">当前行动</view>
+        <view class="mission-title">{{selectedTargetName}}</view>
+        <view class="muted">{{selectedTargetMeta}}</view>
+      </view>
+      <view class="mission-status {{canAttack ? 'ready' : canPublish ? 'armed' : ''}}">{{canAttack ? '可开战' : canPublish ? '可发布' : '准备中'}}</view>
+    </view>
+    <view class="hint">{{nextHint}}</view>
+    <view class="mission-actions">
+      <button class="ghost small" data-tab="defend" bindtap="setTab">去布防</button>
+      <button class="ghost small" data-tab="raid" bindtap="setTab">选目标</button>
+      <button class="primary small" bindtap="attack">立即开战</button>
+    </view>
+  </view>
+
   <view wx:if="{{tab==='world'}}">
     <view class="section-title">在线宝藏世界</view>
     <view class="world-map card">

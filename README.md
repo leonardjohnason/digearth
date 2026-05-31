@@ -59,7 +59,7 @@ gcloud builds submit --config cloudbuild.yaml \
   --substitutions=_REGION=asia-east1,_SERVICE=treasure-raiders-api
 ```
 
-The Cloud Run service is configured with a **300 second request timeout**.
+The Cloud Run service is configured with a **30 minute request timeout**.
 
 After deployment, copy the Cloud Run URL into `miniprogram/app.js` or save it from the miniapp's Backend URL field.
 
@@ -68,5 +68,3 @@ After deployment, copy the Cloud Run URL into `miniprogram/app.js` or save it fr
 - Default backend store is Firestore on Google Cloud.
 - Local testing can use in-memory state with `USE_MEMORY_STORE=1`.
 - Current player identity defaults to `demo`; later versions should bind to Weixin login/openid.
-
-<!-- Codex write permission test: 2026-05-30 -->

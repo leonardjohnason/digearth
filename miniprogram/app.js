@@ -1,7 +1,6 @@
 App({
   globalData: {
-    // Replace with your Cloud Run HTTPS URL after deployment, e.g. https://treasure-raiders-xxx-uc.a.run.app
-    apiBase: 'http://localhost:8080'
+    apiBase: 'https://treasure-raiders-api-y62ah3nlkq-de.a.run.app'
   },
   onLaunch() {
     const configured = wx.getStorageSync('apiBase')

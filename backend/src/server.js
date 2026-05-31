@@ -1,11 +1,12 @@
 import express from 'express'
 import helmet from 'helmet'
+import { pathToFileURL } from 'node:url'
 import { battle } from './battle.js'
 import { authMiddleware, exchangeWeixinCode, issueToken, requireAuth } from './auth.js'
 import { defenses, freshState, npcTargets, scenes, treasures, units } from './gameData.js'
 import { getState, getTreasure, leaderboard, listTreasures, publishTreasure, recordAttack, saveState, updateTreasure, upsertProfile } from './store.js'
 
-const app = express()
+export const app = express()
 app.use(helmet({ crossOriginResourcePolicy: false }))
 app.use(express.json({ limit: '256kb' }))
 app.use(authMiddleware)
@@ -159,5 +160,10 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err.message || 'Server error' })
 })
 
-const port = Number(process.env.PORT || 8080)
-app.listen(port, () => console.log(`Treasure Raiders API listening on ${port}`))
+export function startServer(port = Number(process.env.PORT || 8080)) {
+  return app.listen(port, () => console.log(`Treasure Raiders API listening on ${port}`))
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  startServer()
+}

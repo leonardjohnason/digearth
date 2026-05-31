@@ -24,6 +24,15 @@
 .section-title { font-size: 30rpx; font-weight: 800; margin: 16rpx 0; }
 .mt { margin-top: 28rpx; }
 .picker { background: #0f1728; padding: 20rpx; border-radius: 18rpx; color: #f4f7ff; }
+.mission { border-color: rgba(255,209,102,.36); background: linear-gradient(135deg, rgba(38,53,85,.94), rgba(20,28,47,.92)); }
+.mission-top { display:flex; justify-content:space-between; align-items:flex-start; gap:18rpx; }
+.mission-title { font-size:32rpx; font-weight:900; margin:6rpx 0; }
+.mission-status { flex-shrink:0; padding:10rpx 16rpx; border-radius:999rpx; background:#263552; color:#b8c7e8; font-size:22rpx; font-weight:800; }
+.mission-status.armed { background:rgba(255,209,102,.18); color:#ffe39b; }
+.mission-status.ready { background:rgba(55,214,151,.18); color:#8ff0c9; }
+.hint { margin-top:18rpx; padding:18rpx; border-radius:18rpx; background:rgba(15,23,40,.72); color:#dce7ff; line-height:1.5; font-size:24rpx; }
+.mission-actions { display:flex; gap:14rpx; margin-top:16rpx; }
+.mission-actions button { flex:1; margin-top:0; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; }
 .shop { margin: 0; min-height: 210rpx; }
 .icon { font-size: 44rpx; margin-bottom: 8rpx; }
