@@ -14,6 +14,12 @@ const LEVELS = [
   { id: 5, name: '火山地宫·终极宝库', scene: 'volcano', goal: '限时穿越岩浆，开启终极宝库', locked: true, bg: ['#3a1520', '#f06a3c'] }
 ]
 
+const ROLES = [
+  { id: 'warrior', name: '勇士阿岚', avatar: '🗡️', color: '#56d6a6', skill: '近战破防' },
+  { id: 'rogue', name: '盗贼小影', avatar: '🕶️', color: '#ffd166', skill: '敏捷拾取' },
+  { id: 'engineer', name: '工匠鲁班', avatar: '🧰', color: '#58a6ff', skill: '机关抗性' }
+]
+
 function request(path, method = 'GET', data = {}, token = '') {
   return new Promise((resolve, reject) => {
     wx.request({
@@ -46,12 +52,7 @@ class SoundFX {
       a.play()
     } catch (_) {}
   }
-  tone(kind) {
-    // Tiny silent-safe WAV blips. If a client rejects data URI audio, gameplay continues.
-    return kind === 'win'
-      ? 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='
-      : 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='
-  }
+  tone() { return 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=' }
 }
 
 class TreasureRaidersGame {
@@ -73,6 +74,8 @@ class TreasureRaidersGame {
     this.levelIndex = 0
     this.token = wx.getStorageSync('authToken') || ''
     this.profile = wx.getStorageSync('profile') || { nickName: '微信探险家' }
+    this.history = wx.getStorageSync('levelHistory') || []
+    this.roleIndex = Number(wx.getStorageSync('roleIndex') || 0)
     this.game = null
     this.log = ['欢迎来到宝藏奇兵。']
     this.loading = false
@@ -97,6 +100,7 @@ class TreasureRaidersGame {
       traps: (lv.traps || []).map(t => ({ ...t, phase: 0 })),
       guardian: lv.guardian ? { ...lv.guardian } : null,
       won: false,
+      chestOpen: 0,
       message: lv.goal
     }
     this.joystick = null
@@ -131,9 +135,7 @@ class TreasureRaidersGame {
     if (!wx.chooseAvatar) { this.log.unshift('当前微信版本不支持头像选择'); return }
     wx.chooseAvatar({ success: async res => { this.profile.avatarUrl = res.avatarUrl; wx.setStorageSync('profile', this.profile); await this.syncProfile() } })
   }
-  async syncProfile() {
-    try { this.game = await this.api('/api/profile', 'POST', { profile: this.profile }); this.log.unshift('微信资料已同步') } catch (_) {}
-  }
+  async syncProfile() { try { this.game = await this.api('/api/profile', 'POST', { profile: this.profile }); this.log.unshift('微信资料已同步') } catch (_) {} }
   async api(path, method = 'GET', data = {}) {
     this.loading = true
     try { return await request(path, method, data, this.token) }
@@ -147,14 +149,24 @@ class TreasureRaidersGame {
     this.levelIndex = i; this.resetLevel(); this.mode = 'play'
   }
 
+  saveResult(ok, reason) {
+    const lv = LEVELS[this.levelIndex]
+    const role = ROLES[this.roleIndex]
+    const result = { ok, reason, level: lv.id, levelName: lv.name, role: role.name, coins: this.player.coins, hp: this.player.hp, at: new Date().toISOString() }
+    this.history.unshift(result)
+    this.history = this.history.slice(0, 8)
+    wx.setStorageSync('levelHistory', this.history)
+  }
+
   async finishLevel() {
     if (this.levelState.won) return
     this.levelState.won = true
+    this.levelState.chestOpen = 1
+    this.saveResult(true, '打开光环宝藏')
     this.mode = 'win'
     this.fx.beep('win')
     this.log.unshift('第一关完成：新手遗物已收入宝库。')
     try {
-      // Use existing backend battle endpoint to persist meaningful progression.
       const data = await this.api('/api/attack', 'POST', { targetId: LEVELS[0].targetId, squad: ['warrior', 'rogue', 'engineer'] })
       this.game = data.game
       this.log = ['云端奖励已结算'].concat(data.report.slice(-3), this.log).slice(0, 30)
@@ -170,11 +182,7 @@ class TreasureRaidersGame {
     if (this.joystick) {
       const dx = this.joystick.x - this.joystick.sx, dy = this.joystick.y - this.joystick.sy
       const len = Math.hypot(dx, dy)
-      if (len > 8) {
-        const speed = 260
-        p.x += dx / len * speed * dt
-        p.y += dy / len * speed * dt
-      }
+      if (len > 8) { const speed = 260; p.x += dx / len * speed * dt; p.y += dy / len * speed * dt }
     }
     p.x = clamp(p.x, 56, WIDTH - 56); p.y = clamp(p.y, 430, HEIGHT - 92)
     for (const c of this.levelState.coins) {
@@ -183,12 +191,13 @@ class TreasureRaidersGame {
     }
     for (const trap of this.levelState.traps) {
       trap.phase += dt
-      if (dist(p, trap) < trap.r + p.r && p.inv <= 0) { p.hp--; p.inv = 1.2; this.fx.beep('hit'); this.effects.push({ x: p.x, y: p.y - 40, text: '-生命', ttl: 0.8 }); if (p.hp <= 0) { this.log.unshift('探险家倒下了，已重置第一关。'); this.resetLevel() } }
+      if (dist(p, trap) < trap.r + p.r && p.inv <= 0) {
+        p.hp--; p.inv = 1.2; this.fx.beep('hit'); this.effects.push({ x: p.x, y: p.y - 40, text: '-生命', ttl: 0.8 })
+        if (p.hp <= 0) { this.saveResult(false, '被机关击倒'); this.log.unshift('探险家倒下了，失败结果已保存。'); this.resetLevel() }
+      }
     }
     const g = this.levelState.guardian
-    if (g && g.hp > 0 && dist(p, g) < 76 && p.atkCooldown <= 0) {
-      g.hp--; p.atkCooldown = 0.8; this.fx.beep('hit'); this.effects.push({ x: g.x, y: g.y - 60, text: '攻击!', ttl: 0.7 })
-    }
+    if (g && g.hp > 0 && dist(p, g) < 76 && p.atkCooldown <= 0) { g.hp--; p.atkCooldown = 0.8; this.fx.beep('hit'); this.effects.push({ x: g.x, y: g.y - 60, text: '攻击!', ttl: 0.7 }) }
     if (g && g.hp <= 0 && p.coins >= this.levelState.coins.length && dist(p, { x: 630, y: 500 }) < 80) this.finishLevel()
     this.effects.forEach(e => { e.ttl -= dt; e.y -= 36 * dt })
     this.effects = this.effects.filter(e => e.ttl > 0)
@@ -210,7 +219,7 @@ class TreasureRaidersGame {
 
   bg(a = COLORS.sky1, b = COLORS.sky2) {
     const c = this.ctx, g = c.createLinearGradient(0, 0, 0, HEIGHT); g.addColorStop(0, a); g.addColorStop(1, b); c.fillStyle = g; c.fillRect(0, 0, WIDTH, HEIGHT)
-    for (let i = 0; i < 36; i++) { this.circle((i * 97 + this.t * 16) % 820 - 40, 80 + (i * 53) % 280, 1.4 + (i % 3), 'rgba(255,255,255,.32)') }
+    for (let i = 0; i < 36; i++) this.circle((i * 97 + this.t * 16) % 820 - 40, 80 + (i * 53) % 280, 1.4 + (i % 3), 'rgba(255,255,255,.32)')
   }
 
   drawTop() {
@@ -222,41 +231,66 @@ class TreasureRaidersGame {
     this.button(570, 98, 120, 42, '同步', () => this.reload(), 'ghost')
   }
 
+  drawRolePicker(y) {
+    this.text('选择角色', 44, y, 28, COLORS.text, '900')
+    ROLES.forEach((r, i) => {
+      const x = 44 + i * 220
+      this.rect(x, y + 44, 198, 92, 22, i === this.roleIndex ? 'rgba(255,209,102,.22)' : '#142033', i === this.roleIndex ? COLORS.gold : COLORS.line)
+      this.center(r.avatar, x + 38, y + 88, 34)
+      this.text(r.name, x + 72, y + 60, 21, COLORS.text, '900', 112)
+      this.text(r.skill, x + 72, y + 91, 18, COLORS.muted, '400', 112)
+      this.addButton(`role${i}`, x, y + 44, 198, 92, r.name, () => { this.roleIndex = i; wx.setStorageSync('roleIndex', i) })
+    })
+  }
+
   drawMenu() {
     this.bg('#0c2344', '#0d5f74'); this.drawTop()
-    this.text('五关藏宝冒险', 42, 195, 42, COLORS.text, '900')
-    this.wrap('先完成第一关：操控探险家收集金币，避开机关，击败守卫，在宝箱处完成结算。后四关已做成关卡规划，后续逐步扩展。', 42, 252, 26, '#d7e6ff', 664, 38, 4)
+    this.text('五关藏宝冒险', 42, 190, 42, COLORS.text, '900')
+    this.wrap('先完成第一关：操控探险家收集金币，避开机关，击败守卫，在宝箱处完成结算。后四关已做成关卡规划，后续逐步扩展。', 42, 242, 25, '#d7e6ff', 664, 34, 3)
+    this.drawRolePicker(345)
     LEVELS.forEach((lv, i) => {
-      const y = 420 + i * 132
-      this.rect(42, y, 666, 108, 24, lv.locked ? 'rgba(20,32,51,.68)' : '#142033', lv.locked ? '#26364e' : COLORS.gold)
-      this.text(`${lv.id}. ${lv.name}`, 70, y + 18, 29, lv.locked ? COLORS.muted : COLORS.text, '900')
-      this.wrap(lv.goal, 70, y + 56, 22, lv.locked ? '#7585a0' : COLORS.muted, 450, 30, 1)
-      this.text(lv.locked ? '规划中' : '可玩', 610, y + 32, 25, lv.locked ? '#7585a0' : COLORS.green, '900')
-      this.addButton(`level${i}`, 42, y, 666, 108, lv.name, () => this.startLevel(i))
+      const y = 520 + i * 105
+      this.rect(42, y, 666, 88, 22, lv.locked ? 'rgba(20,32,51,.68)' : '#142033', lv.locked ? '#26364e' : COLORS.gold)
+      this.text(`${lv.id}. ${lv.name}`, 70, y + 12, 25, lv.locked ? COLORS.muted : COLORS.text, '900')
+      this.wrap(lv.goal, 70, y + 45, 19, lv.locked ? '#7585a0' : COLORS.muted, 450, 26, 1)
+      this.text(lv.locked ? '规划中' : '可玩', 610, y + 28, 22, lv.locked ? '#7585a0' : COLORS.green, '900')
+      this.addButton(`level${i}`, 42, y, 666, 88, lv.name, () => this.startLevel(i))
     })
-    this.button(72, 1115, 250, 60, '微信登录/同步', () => this.login(true), 'primary')
-    this.button(428, 1115, 250, 60, '选择头像', () => this.chooseAvatar(), 'ghost')
+    this.button(72, 1070, 250, 58, '微信登录/同步', () => this.login(true), 'primary')
+    this.button(428, 1070, 250, 58, '选择头像', () => this.chooseAvatar(), 'ghost')
+    this.text('最近记录', 44, 1150, 25, COLORS.gold, '900')
+    const h = this.history[0]
+    this.wrap(h ? `${h.ok ? '胜利' : '失败'}｜${h.levelName}｜${h.role}｜${h.reason}` : '暂无通关/失败记录', 44, 1182, 22, COLORS.muted, 650, 30, 2)
+  }
+
+  drawTreasureChest(x, y) {
+    const open = this.levelState.chestOpen
+    const glow = 0.55 + Math.sin(this.t * 7) * 0.25
+    for (let i = 4; i > 0; i--) this.circle(x, y, 38 + i * 18 + open * 28, `rgba(255,209,102,${glow * 0.06})`)
+    this.rect(x - 48, y - 18, 96, 60, 12, '#8b4a22', '#ffd166')
+    this.rect(x - 52, y - 44 - open * 26, 104, 38, 14, '#b86b2f', '#ffe39b')
+    this.rect(x - 8, y - 15, 16, 26, 5, '#ffd166')
+    ;['💎','✨','🪙'].forEach((s, i) => this.center(s, x - 34 + i * 34, y - 62 - open * 20 + Math.sin(this.t * 5 + i) * 8, 26))
+    this.center(open ? '光环宝藏!' : '宝箱', x, y + 62, 23, COLORS.gold, '900')
   }
 
   drawScene() {
     const lv = LEVELS[this.levelIndex]
-    this.bg(lv.bg[0], lv.bg[1])
-    this.drawTop()
-    // terrain
+    this.bg(lv.bg[0], lv.bg[1]); this.drawTop()
     this.rect(0, 390, WIDTH, 944, 0, '#2d6b4f')
     this.rect(54, 450, 642, 790, 34, '#2f7e55', '#9ddc8d')
-    for (let i = 0; i < 8; i++) { this.circle(80 + i * 92, 520 + (i % 3) * 170, 18, '#1f5b3b') }
-    // path and treasure
+    for (let i = 0; i < 8; i++) this.circle(80 + i * 92, 520 + (i % 3) * 170, 18, '#1f5b3b')
     this.rect(120, 565, 505, 560, 90, 'rgba(226,184,96,.46)')
-    this.circle(630, 500, 54, COLORS.gold, '#fff0a8'); this.center('宝箱', 630, 500, 23, '#5b3600', '900')
+    this.drawTreasureChest(630, 500)
     this.text(lv.name, 44, 190, 35, COLORS.text, '900'); this.wrap(lv.goal, 44, 238, 24, '#dbe8ff', 660, 34, 2)
-    this.text(`生命 ${'❤'.repeat(this.player.hp)}  金币 ${this.player.coins}/${this.levelState.coins.length}`, 44, 318, 28, COLORS.gold, '900')
+    this.text(`角色 ${ROLES[this.roleIndex].name}  生命 ${'❤'.repeat(this.player.hp)}  金币 ${this.player.coins}/${this.levelState.coins.length}`, 44, 318, 25, COLORS.gold, '900')
     for (const coin of this.levelState.coins) if (!coin.taken) { const r = 20 + Math.sin(this.t * 6 + coin.x) * 3; this.circle(coin.x, coin.y, r, COLORS.gold, '#fff4b4'); this.center('¥', coin.x, coin.y + 1, 22, '#7a4b00', '900') }
     for (const trap of this.levelState.traps) { const pulse = 1 + Math.sin(this.t * 5) * .12; this.circle(trap.x, trap.y, trap.r * pulse, 'rgba(255,80,80,.28)', COLORS.red); this.center('弩', trap.x, trap.y, 27, '#ffd6d6', '900') }
     const g = this.levelState.guardian
     if (g && g.hp > 0) { this.circle(g.x, g.y, 48, '#263552', COLORS.gold); this.center(g.icon, g.x, g.y - 2, 42); this.text(`守卫 ${g.hp}/3`, g.x - 48, g.y + 58, 23, COLORS.text, '800') }
     const blink = this.player.inv > 0 && Math.floor(this.t * 12) % 2 === 0
-    if (!blink) { this.circle(this.player.x, this.player.y, this.player.r, '#56d6a6', '#dcfff2'); this.center('🧭', this.player.x, this.player.y - 2, 30) }
+    const role = ROLES[this.roleIndex]
+    if (!blink) { this.circle(this.player.x, this.player.y, this.player.r, role.color, '#dcfff2'); this.center(role.avatar, this.player.x, this.player.y - 2, 30) }
     for (const e of this.effects) this.center(e.text, e.x, e.y, 24, COLORS.gold, '900')
     this.drawJoystick()
     this.button(44, 1220, 150, 56, '返回', () => { this.mode = 'menu' }, 'ghost')
@@ -273,22 +307,22 @@ class TreasureRaidersGame {
 
   drawWin() {
     this.drawScene()
-    this.rect(58, 365, 634, 420, 32, 'rgba(10,18,32,.92)', COLORS.gold)
-    this.center('第一关完成！', WIDTH / 2, 430, 48, COLORS.gold, '900')
-    this.wrap('你收集了山谷金币，击败守卫，并打开新手遗物宝箱。云端奖励已经结算到你的微信登录账号。', 110, 500, 29, COLORS.text, 530, 44, 4)
-    this.button(110, 675, 220, 64, '再玩一次', () => { this.resetLevel(); this.mode = 'play' }, 'primary')
-    this.button(420, 675, 220, 64, '关卡菜单', () => { this.mode = 'menu' }, 'ghost')
+    this.rect(58, 330, 634, 500, 32, 'rgba(10,18,32,.92)', COLORS.gold)
+    for (let i = 0; i < 8; i++) this.circle(WIDTH / 2, 470, 70 + i * 24 + Math.sin(this.t * 4 + i) * 8, `rgba(255,209,102,${0.04 + i * 0.006})`)
+    this.center('宝藏打卡成功！', WIDTH / 2, 405, 46, COLORS.gold, '900')
+    this.drawTreasureChest(WIDTH / 2, 500)
+    this.wrap('光环夺目的新手遗物已经收入宝库。成功结果已保存，云端奖励也结算到你的微信登录账号。', 110, 620, 28, COLORS.text, 530, 42, 4)
+    this.button(110, 740, 220, 64, '再玩一次', () => { this.resetLevel(); this.mode = 'play' }, 'primary')
+    this.button(420, 740, 220, 64, '关卡菜单', () => { this.mode = 'menu' }, 'ghost')
   }
 
   drawLoading() { if (this.loading) { this.rect(0, 0, WIDTH, HEIGHT, 0, 'rgba(0,0,0,.32)'); this.center('连接云端...', WIDTH / 2, HEIGHT / 2, 34, COLORS.gold, '900') } }
-
   render() {
     this.buttons = []
     const c = this.ctx
     c.save(); c.clearRect(0, 0, this.sw, this.sh); c.translate(this.xPad, this.yPad); c.scale(this.scale, this.scale)
     if (this.mode === 'play') this.drawScene(); else if (this.mode === 'win') this.drawWin(); else this.drawMenu()
-    this.drawLoading()
-    c.restore()
+    this.drawLoading(); c.restore()
   }
   loop() { const now = Date.now(); const dt = Math.min(0.05, (now - this.last) / 1000); this.last = now; this.update(dt); this.render(); requestAnimationFrame(() => this.loop()) }
 }
