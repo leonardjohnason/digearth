@@ -1,6 +1,8 @@
 {
   "description": "Treasure Raiders Weixin Mini Program",
-  "packOptions": { "ignore": [] },
+  "packOptions": {
+    "ignore": []
+  },
   "setting": {
     "urlCheck": true,
     "es6": true,
@@ -10,7 +12,7 @@
   },
   "compileType": "miniprogram",
   "libVersion": "3.7.0",
-  "appid": "touristappid",
+  "appid": "wx3027cecfb6cbe0c6",
   "projectname": "treasure-raiders-weixin",
   "condition": {}
 }

@@ -1,0 +1,30 @@
+{
+  "name": "treasure-raiders-weixin",
+  "version": "1.0.0",
+  "description": "Runnable Weixin Mini Program + Google Cloud Run backend for 《宝藏奇兵》.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "npm --prefix backend test",
+    "test:backend": "npm --prefix backend test",
+    "deploy:backend": "cd backend && PATH=/Users/adam/.local/bin:$PATH ./deploy-gcloud.sh",
+    "upload:weixin": "node scripts/upload-weixin.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leonardjohnason/digearth.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/leonardjohnason/digearth/issues"
+  },
+  "homepage": "https://github.com/leonardjohnason/digearth#readme",
+  "devDependencies": {
+    "miniprogram-ci": "^2.1.31"
+  }
+}
